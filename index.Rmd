@@ -1,0 +1,69 @@
+---
+title: "Prediction of Weight Lifting Exercises Quality"
+author: "Thach-Ngoc TRAN"
+date: "November 16, 2015"
+output: html_document
+---
+
+# Executive Summary
+
+This report is going to apply a Prediction Model (Random Forest) to predict the quality of Weight Lifting Exercises. Traditionally, people are interested in distinguishing activities, such as "sitting", "standing"; thus, systems like wearable devices can provide helpful feedbacks to users. Taking a step further, there are increasingly interests in helping people to improve the quality of their activities. In this case, Weight Lifting Exercises is taken into consideration. In brief, using Random Forest, the algorithm can predict with high accurary (99.3%) for the Training Dataset (Cross Validation) the quality of the exercises (the normal execution and four common mistakes).
+
+For more information regarding the project, see [1]. The training and testing data for the report can be downloaded from [2] and [3].
+
+# Data Processing
+
+First, load the data.
+
+```{r}
+library(caret)
+dataTrainFull = read.csv("pml-training.csv")
+dim(dataTrainFull)
+```
+We can see that there are 19622 observations and 159 variables (not including the first column of indexing). The last column is "classe" (A is correct exercise execution, B/C/D/E are common mistakes). It seems each observation is instanteneous, which means a collection of sensor values at a certain point of time. There are some variables easy to recognize their meanings (accel_forearm_x, accel_forearm_y, accel_forearm_z). However, many others seem vague. So we do the trick by looking at Testing Data (pml-testing.csv) and find useful variables (which must be different than NA and blank).
+
+After this, we have 53 likely meaningful variables. Let's extract the original data, keeping only these variables:
+
+```{r}
+dataTrainSelectedFeatures = dataTrainFull[,c("roll_belt", "pitch_belt", "yaw_belt", "total_accel_belt", "gyros_belt_x", "gyros_belt_y", "gyros_belt_z", "accel_belt_x", "accel_belt_y", "accel_belt_z", "magnet_belt_x", "magnet_belt_y", "magnet_belt_z", "roll_arm", "pitch_arm", "yaw_arm", "total_accel_arm", "gyros_arm_x", "gyros_arm_y", "gyros_arm_z", "accel_arm_x", "accel_arm_y", "accel_arm_z", "magnet_arm_x", "magnet_arm_y", "magnet_arm_z", "roll_dumbbell", "pitch_dumbbell", "yaw_dumbbell", "total_accel_dumbbell", "gyros_dumbbell_x", "gyros_dumbbell_y", "gyros_dumbbell_z", "accel_dumbbell_x", "accel_dumbbell_y", "accel_dumbbell_z", "magnet_dumbbell_x", "magnet_dumbbell_y", "magnet_dumbbell_z", "roll_forearm", "pitch_forearm", "yaw_forearm", "total_accel_forearm", "gyros_forearm_x", "gyros_forearm_y", "gyros_forearm_z", "accel_forearm_x", "accel_forearm_y", "accel_forearm_z", "magnet_forearm_x", "magnet_forearm_y", "magnet_forearm_z", "classe")]
+dim(dataTrainSelectedFeatures)
+```
+
+Similarly with the Testing Data:
+
+```{r}
+dataTestFull = read.csv("pml-testing.csv")
+dataTestSelectedFeatures = dataTestFull[,c("roll_belt", "pitch_belt", "yaw_belt", "total_accel_belt", "gyros_belt_x", "gyros_belt_y", "gyros_belt_z", "accel_belt_x", "accel_belt_y", "accel_belt_z", "magnet_belt_x", "magnet_belt_y", "magnet_belt_z", "roll_arm", "pitch_arm", "yaw_arm", "total_accel_arm", "gyros_arm_x", "gyros_arm_y", "gyros_arm_z", "accel_arm_x", "accel_arm_y", "accel_arm_z", "magnet_arm_x", "magnet_arm_y", "magnet_arm_z", "roll_dumbbell", "pitch_dumbbell", "yaw_dumbbell", "total_accel_dumbbell", "gyros_dumbbell_x", "gyros_dumbbell_y", "gyros_dumbbell_z", "accel_dumbbell_x", "accel_dumbbell_y", "accel_dumbbell_z", "magnet_dumbbell_x", "magnet_dumbbell_y", "magnet_dumbbell_z", "roll_forearm", "pitch_forearm", "yaw_forearm", "total_accel_forearm", "gyros_forearm_x", "gyros_forearm_y", "gyros_forearm_z", "accel_forearm_x", "accel_forearm_y", "accel_forearm_z", "magnet_forearm_x", "magnet_forearm_y", "magnet_forearm_z")]
+dim(dataTestSelectedFeatures)
+```
+
+# Prediction
+
+The advantage of Random Forest over Decision Tree is to greatly reduce "Overfitting Problem". Nevertheless, we can even decrease the Overfitting level by additionally using Cross Validation together with Random Forest.
+
+Therefore, the training is:
+
+```{r, cache=TRUE}
+modFit = train(classe ~ ., data = dataTrainSelectedFeatures, method = "rf", trControl = trainControl(method = "cv", number = 3), allowParallel = T)
+print(modFit)
+```
+
+The training process ran around 7 minutes in a machine equipped with Core i7 (8 logical cores) and 8 GB RAM. The accuracy is high for the Training Data (99.3%). However, it is expected as the model is chosen based on the least "in of sample error rate" (to some extent, this can be considered as "overfitting"). Applying this model against "out of sample" data can result in higher error rate. With the high accuracy, we may not need to tune the model anymore, for example, pre-process with Principle Component Analysis (PCA) or adjust the fold number of Cross Validation.
+
+We will use this Model to predict the values missed in Testing Data:
+
+```{r}
+results = predict(modFit, dataTestSelectedFeatures)
+results
+```
+
+Unfortunately, we are not sure how the performance of the model is with Testing Data because the true results are missed (Part 2 of the Project - Project Submission).
+
+# References
+
+[1] http://groupware.les.inf.puc-rio.br/har
+
+[2] https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+[3] https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
